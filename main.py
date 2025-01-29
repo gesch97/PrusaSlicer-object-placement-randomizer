@@ -6,10 +6,10 @@ from dataclasses import dataclass
 
 @dataclass()
 class PrintArea:
-    X: int = -1
-    Y: int = -1
-    W: int = -1
-    H: int = -1
+    X: float = -1.0
+    Y: float = -1.0
+    W: float = -1.0
+    H: float = -1.0
 
 
 def init_logging():
@@ -24,13 +24,15 @@ def init_logging():
 def offset_axis(line, axis, offset):
     pos = line.find(axis)
     end = line.find(" ", pos)
-    line = line.replace(line[pos:end], f"{axis}{int(line[pos + 1 : end]) + offset}")
+    line = line.replace(line[pos:end], f"{axis}{float(line[pos + 1 : end]) + offset}")
     return line
 
 
 def offset_line(line, offset_x, offset_y):
-    line = offset_axis(line, "X", offset_x)
-    line = offset_axis(line, "Y", offset_y)
+    if "X" in line:
+        line = offset_axis(line, "X", offset_x)
+    if "Y" in line:
+        line = offset_axis(line, "Y", offset_y)
     return line
 
 
@@ -47,8 +49,8 @@ def main():
     with open(path) as f:
         lines = f.read().split("\n")
     # TODO: randomize xy
-    offset_x = 10
-    offset_y = 20
+    offset_x = 100
+    offset_y = 100
 
     logging.info(f"Random offset (x,y): ({offset_x}, {offset_y})")
 
@@ -69,10 +71,18 @@ def main():
     logging.info(f"old print area: {bed_area}")
 
     for i, line in enumerate(lines):
+        print(line)
         words = line.split(" ")
         match words[0]:
             case "M555":
                 lines[i] = offset_line(line, offset_x, offset_y)
+            case "G0" | "G1" | "G2" | "G3":
+                if "X" in line or "Y" in line:
+                    lines[i] = offset_line(line, offset_x, offset_y)
+
+    output_as_string = "\n".join(lines)
+    with open("output.gcode", "w") as text_file:
+        text_file.write(output_as_string)
 
 
 if __name__ == "__main__":

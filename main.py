@@ -21,8 +21,17 @@ def init_logging():
     logging.info("Logging starts")
 
 
+def offset_axis(line, axis, offset):
+    pos = line.find(axis)
+    end = line.find(" ", pos)
+    line = line.replace(line[pos:end], f"{axis}{int(line[pos + 1 : end]) + offset}")
+    return line
+
+
 def offset_line(line, offset_x, offset_y):
-    pass
+    line = offset_axis(line, "X", offset_x)
+    line = offset_axis(line, "Y", offset_y)
+    return line
 
 
 def main():

@@ -21,10 +21,18 @@ def init_logging():
     logging.info("Logging starts")
 
 
-def offset_axis(line, axis, offset):
-    pos = line.find(axis)
+def get_gcode_argument(line: str, name_of_argument: str, get_position=False):
+    pos = line.find(name_of_argument)
     end = line.find(" ", pos)
-    line = line.replace(line[pos:end], f"{axis}{float(line[pos + 1 : end]) + offset}")
+    if get_position:
+        return pos + 1, end
+    else:
+        return float(line[pos + 1 : end])
+
+
+def offset_axis(line, axis, offset):
+    pos, end = get_gcode_argument(line, axis, get_position=True)
+    line = line.replace(line[pos - 1 : end], f"{axis}{float(line[pos:end]) + offset}")
     return line
 
 
@@ -34,6 +42,23 @@ def offset_line(line, offset_x, offset_y):
     if "Y" in line:
         line = offset_axis(line, "Y", offset_y)
     return line
+
+
+def check_if_pt_in_printarea(print_area: PrintArea, line: str):
+    if "X" in line:
+        xcoord = get_gcode_argument(line, "X", get_position=False)
+        if xcoord < print_area.X:
+            return False
+        if xcoord > print_area.X + print_area.W:
+            return False
+    if "Y" in line:
+        xcoord = get_gcode_argument(line, "Y", get_position=False)
+        if xcoord < print_area.Y:
+            return False
+        if xcoord > print_area.Y + print_area.H:
+            return False
+
+    return True
 
 
 def main():
@@ -77,6 +102,8 @@ def main():
             case "M555":
                 lines[i] = offset_line(line, offset_x, offset_y)
             case "G0" | "G1" | "G2" | "G3":
+                if not check_if_pt_in_printarea(bed_area, line):
+                    continue
                 if "X" in line or "Y" in line:
                     lines[i] = offset_line(line, offset_x, offset_y)
 

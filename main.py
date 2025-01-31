@@ -2,6 +2,8 @@ import argparse
 import logging
 import os
 from dataclasses import dataclass
+from random import uniform
+import random
 
 
 @dataclass()
@@ -44,6 +46,30 @@ def offset_line(line, offset_x, offset_y):
     return line
 
 
+def get_random_offset(printer_model, object_boundries):
+    match printer_model:
+        case "Prusa MK4S":
+            printer_max_x = 250
+            printer_max_y = 210
+        case _:
+            raise Exception("Unknow printer")
+
+    MIN_GAP_FROM_EDGE = 2  # mm
+
+    min_offset_x = -object_boundries.X + MIN_GAP_FROM_EDGE
+    max_offset_x = printer_max_x - object_boundries.W
+    min_offset_y = -object_boundries.Y + MIN_GAP_FROM_EDGE
+    max_offset_y = printer_max_y - object_boundries.H
+    logging.info(f"Offset range X: {min_offset_x} - {max_offset_x}")
+    logging.info(f"Offset range Y: {min_offset_y} - {max_offset_y}")
+
+    offset_x = random.uniform(min_offset_x, max_offset_x)
+    offset_y = random.uniform(min_offset_y, max_offset_y)
+
+    logging.info(f"Random offset (x,y): ({offset_x}, {offset_y})")
+    return offset_x, offset_y
+
+
 def check_if_pt_in_printarea(print_area: PrintArea, line: str):
     if "X" in line:
         xcoord = get_gcode_argument(line, "X", get_position=False)
@@ -62,24 +88,26 @@ def check_if_pt_in_printarea(print_area: PrintArea, line: str):
 
 
 def main():
-    print("Hi, this a PrusaSlicer post-process script!")
     parser = argparse.ArgumentParser(
         description="A python script to be used as a PrusaSlicer post processing step. It moves all objects to a random place instead of the default middle of the print bed."
     )
     parser.add_argument("Path", help="Path for the gcode to be edited", type=str)
+    parser.add_argument(
+        "printer_model",
+        help="The model of your 3D printed.",
+        choices=[
+            "Prusa MK4S",
+        ],
+        type=str,
+    )
     args = parser.parse_args()
     path = vars(args)["Path"]
+    printer_model = vars(args)["printer_model"]
     logging.info(f"The following path was provided: {path}")
 
     with open(path) as f:
         lines = f.read().split("\n")
-    # TODO: randomize xy
-    offset_x = 100
-    offset_y = 100
 
-    logging.info(f"Random offset (x,y): ({offset_x}, {offset_y})")
-
-    # find out which points are in the print area and which are not
     mfff_line = next(filter(lambda line: line.startswith("M555"), lines))
     bed_area = PrintArea()
     for word in mfff_line.split(" "):
@@ -95,8 +123,10 @@ def main():
 
     logging.info(f"old print area: {bed_area}")
 
+    offset_x, offset_y = get_random_offset(printer_model, bed_area)
+
     for i, line in enumerate(lines):
-        print(line)
+        # print(line)
         words = line.split(" ")
         match words[0]:
             case "M555":

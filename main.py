@@ -70,6 +70,13 @@ def get_random_offset(printer_model, object_boundries):
     return offset_x, offset_y
 
 
+def get_offset(x_ofs, y_ofs):
+    if x_ofs > 1 or y_ofs > 1:
+        raise Exception("Offset coefficient can't be larger than 1")
+    if x_ofs < 0 or y_ofs < 0:
+        raise Exception("Offset coefficient can't be smaller than 0")
+
+
 def check_if_pt_in_printarea(print_area: PrintArea, line: str):
     if "X" in line:
         xcoord = get_gcode_argument(line, "X", get_position=False)
